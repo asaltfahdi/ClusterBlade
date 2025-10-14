@@ -1,0 +1,60 @@
+# ==============================
+# 🔹 Python & Virtual Environment
+# ==============================
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+*.pdb
+*.pkl
+
+# Virtual environment
+.venv/
+env/
+venv/
+ENV/
+*.env
+*.venv
+
+# ==============================
+# 🔹 PyInstaller Build Artifacts
+# ==============================
+build/
+dist/
+*.spec
+
+# Temporary files created by PyInstaller
+*.manifest
+*.dll
+*.exe
+*.pkg
+*.bak
+*.log
+
+# ==============================
+# 🔹 Project Files
+# ==============================
+# Cache and temporary data
+*.tmp
+*.temp
+*.swp
+*.swo
+*.bak
+*.old
+
+# Local settings
+config.json
+settings.json
+
+# ==============================
+# 🔹 Runtime and YAML Files
+# ==============================
+
+# Ignore the runtime folder (and everything inside it)
+runtime/
+clusterblade.egg-info
+.gradio
+# Ignore all YAML files anywhere in the project
+*.yml
+*.yaml
