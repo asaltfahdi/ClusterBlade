@@ -48,5 +48,12 @@ config.json
 settings.json
 
 # ==============================
-# 🔹 Gradio / ClusterBlade UI Assets
-#
+# 🔹 Runtime and YAML Files
+# ==============================
+
+# Ignore the runtime folder (and everything inside it)
+runtime/
+
+# Ignore all YAML files anywhere in the project
+*.yml
+*.ya
