@@ -1,0 +1,112 @@
+/* Shared pulse styles */
+.pulse-dot {
+  width: 12px;
+  height: 12px;
+  margin: 2px;;
+  border-radius: 50%;
+  display: inline-block;
+  box-shadow: 0 0 8px currentColor;
+}
+
+/* 🟢 Green fast pulse for online nodes */
+.pulse-dot.online {
+  color: #39ff14;
+  background: #39ff14;
+  animation: pulseGreen 1.4s ease-in-out infinite;
+}
+
+/* 🔴 Red slower pulse for offline nodes */
+.pulse-dot.offline {
+  color: #ff3333;
+  background: #ff3333;
+  animation: pulseRed 2.2s ease-in-out infinite;
+}
+
+/* Animations */
+@keyframes pulseGreen {
+  0%   { opacity: 0.3; transform: scale(0.8); box-shadow: 0 0 4px rgba(57,255,20,0.4); }
+  50%  { opacity: 1;   transform: scale(1.15); box-shadow: 0 0 10px rgba(57,255,20,0.9); }
+  100% { opacity: 0.3; transform: scale(0.8); box-shadow: 0 0 4px rgba(57,255,20,0.4); }
+}
+
+@keyframes pulseRed {
+  0%   { opacity: 0.3; transform: scale(0.8); box-shadow: 0 0 4px rgba(255,51,51,0.4); }
+  50%  { opacity: 1;   transform: scale(1.1); box-shadow: 0 0 12px rgba(255,51,51,0.9); }
+  100% { opacity: 0.3; transform: scale(0.8); box-shadow: 0 0 4px rgba(255,51,51,0.4); }
+}
+
+
+/* 🧾 Main README Markdown Container */
+.readme-content {
+  /* Removed fixed height and overflow to prevent double scroll */
+  padding: 16px;
+  background-color: #111;
+  color: #e0e0e0;
+  border-radius: 10px;
+  line-height: 1.6;
+  font-size: 15px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+}
+
+/* Inline code styling (inside Markdown) */
+.readme-content code {
+  background: #222;
+  padding: 2px 5px;
+  border-radius: 4px;
+  color: #00cc66;
+  font-family: Consolas, monospace;
+  font-size: 0.95em;
+}
+
+/* Code blocks */
+.readme-content pre {
+  background: #1a1a1a;
+  border-radius: 6px;
+  padding: 12px;
+  overflow-x: auto;
+}
+
+/* Links inside README */
+.readme-content a {
+  color: #4cd964;
+  text-decoration: none;
+}
+
+.readme-content a:hover {
+  text-decoration: underline;
+}
+
+/* Headings */
+.readme-content h1,
+.readme-content h2,
+.readme-content h3 {
+  color: #ffffff;
+  border-bottom: 1px solid #222;
+  padding-bottom: 4px;
+  margin-top: 20px;
+}
+
+/* Lists and table adjustments */
+.readme-content ul,
+.readme-content ol {
+  margin-left: 20px;
+}
+
+.readme-content table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.readme-content th,
+.readme-content td {
+  border: 1px solid #333;
+  padding: 8px;
+}
+
+.readme-content th {
+  background-color: #222;
+  color: #00cc66;
+}
+
+
+

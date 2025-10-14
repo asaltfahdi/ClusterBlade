@@ -1,0 +1,35 @@
+[project]
+name = "clusterblade"
+version = "0.1.0"
+description = "ClusterBlade – ElasticSearch cluster deployer and monitor (UI + CLI)."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "asaltFahdi" }]
+
+dependencies = [
+  "paramiko>=3.4.0",
+  "cryptography>=42.0.5",
+  "jinja2>=3.1.4",
+  "pyyaml>=6.0.2",
+  "pydantic>=2.9.0",
+  "pydantic-settings>=2.5.2",
+  "requests>=2.32.3",
+  "gradio>=4.44.0",
+  "rich>=13.8.0",
+  "tenacity>=9.0.0"
+]
+
+# 🧩 Optional keywords for metadata
+keywords = ["elasticsearch", "deployment", "gradio", "monitoring", "ssl"]
+
+# 🧠 Makes it runnable via CLI: clusterblade --port 8080
+[project.scripts]
+clusterblade = "clusterblade.gradio_ui.app:cli_main"
+
+[tool.setuptools]
+packages = ["clusterblade"]
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel", "build"]
+build-backend = "setuptools.build_meta"

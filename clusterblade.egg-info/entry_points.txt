@@ -1,0 +1,2 @@
+[console_scripts]
+clusterblade = clusterblade.gradio_ui.app:cli_main

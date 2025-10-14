@@ -1,0 +1,71 @@
+# ======================== Elasticsearch Configuration =========================
+#
+# NOTE: Elasticsearch comes with reasonable defaults for most settings.
+#       Before you set out to tweak and tune the configuration, make sure you
+#       understand what you are trying to accomplish and the consequences.
+#
+# The primary way of configuring a node is via this file. This template lists
+# the most important settings you may want to configure for a production cluster.
+#
+# Please consult the documentation for further information on configuration options:
+# https://www.elastic.co/guide/en/elasticsearch/reference/index.html
+#
+# ---------------------------------- Cluster -----------------------------------
+#
+cluster.name: cluster_content
+#
+# ------------------------------------ Node ------------------------------------
+#
+node.name: master-1
+#
+node.attr.rack: r1
+#
+# ----------------------------------- Paths ------------------------------------
+#
+path.data: /var/lib/elasticsearch
+path.logs: /var/log/elasticsearch
+#
+# ----------------------------------- Memory -----------------------------------
+#
+#bootstrap.memory_lock: true
+#
+# ---------------------------------- Network -----------------------------------
+#
+network.host: 192.168.56.110
+#
+# Assign dynamic transport and http ports
+transport.port: 9310
+http.port: 9210
+#
+# --------------------------------- Discovery ----------------------------------
+#
+discovery.seed_hosts:
+  ["192.168.56.110:9210", "192.168.56.120:9220"]
+#
+cluster.initial_master_nodes:
+  - master-1
+
+  - master-2
+
+#
+# ---------------------------------- Various -----------------------------------
+#
+#action.destructive_requires_name: false
+
+#----------------------- BEGIN SECURITY AUTO CONFIGURATION -----------------------
+#
+xpack.security.enabled: true
+
+
+
+
+
+xpack.security.transport.ssl:
+  enabled: true
+  verification_mode: certificate
+  certificate: certs/master-1.crt
+  key: certs/master-1.key
+  certificate_authorities:
+    - certs/ca.pem
+
+#----------------------- END SECURITY AUTO CONFIGURATION -------------------------
