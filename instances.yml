@@ -1,7 +1,0 @@
-instances:
-  - name: master-1
-    ip: 192.168.56.110
-    dns: master-1.local
-  - name: master-2
-    ip: 192.168.56.120
-    dns: master-2.local
