@@ -12,16 +12,19 @@ def deploy_cluster(shared_state, ssh_user, ssh_pass, progress_callback=None):
     """
 
     cluster_name = shared_state.get("cluster_name", "es-cluster")
+    instances = shared_state.get("instances", [])
+    enable_security = shared_state.get("enable_security", True)
     enable_ssl = shared_state.get("enable_ssl", True)
     enable_http = shared_state.get("enable_http", False)
     http_groups = shared_state.get("http_groups", [])
+    enable_logging = shared_state.get("enable_logging", False)
+    memory_lock = shared_state.get("memory_lock", False)
 
-    grouped = shared_state.get("grouped_nodes", {})
-    masters = grouped.get("master", []) or grouped.get("Master", [])
-    all_nodes = [n for nodes in grouped.values() for n in nodes]
+    masters = [n for n in instances if "master" in n["name"].lower()]
+
 
     logs = []
-    for node in all_nodes:
+    for node in instances:
         ip = node["ip"]
         node_name = node["name"]
 
@@ -36,6 +39,9 @@ def deploy_cluster(shared_state, ssh_user, ssh_pass, progress_callback=None):
                 enable_ssl=enable_ssl,
                 enable_http=enable_http,
                 http_groups=http_groups,
+                enable_security=enable_security,
+                enable_logging=enable_logging,
+                memory_lock=memory_lock
             )
             logs.append(f"📝 Generated config for {node_name} at {cfg_path}")
 

@@ -2,73 +2,75 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from pathlib import Path
 from clusterblade.core.paths import get_runtime_dir
 
+
 def render_es_config(
     cluster_name,
     node,
     master_nodes,
+    enable_security=True,
     enable_ssl=True,
     enable_http=False,
-    http_groups=None
+    http_groups=None,
+    enable_logging=False,
+    memory_lock=False
 ):
     """
     Render elasticsearch.yml for a given node.
-    Template is inside project (clusterblade/templates).
-    Output YAML is outside in runtime/generated_configs.
+    Uses Jinja2 template (clusterblade/templates/elasticsearch.yml.j2)
+    and writes to runtime/generated_configs/{node_name}/elasticsearch.yml
     """
 
-    # Template directory inside the package
     template_dir = Path(__file__).resolve().parent.parent / "templates"
-    template_dir_str = str(template_dir.as_posix())
-
-    env = Environment(
-        loader=FileSystemLoader(template_dir_str),
-        autoescape=select_autoescape()
-    )
+    env = Environment(loader=FileSystemLoader(str(template_dir)), autoescape=select_autoescape())
 
     try:
         template = env.get_template("elasticsearch.yml.j2")
     except Exception as e:
-        raise FileNotFoundError(
-            f"❌ Could not find elasticsearch.yml.j2 inside {template_dir_str}\n{e}"
-        )
+        raise FileNotFoundError(f"❌ Missing elasticsearch.yml.j2 in {template_dir}\n{e}")
 
-    # Prepare render context
+    # Identify master group
     master_ips = [m["ip"] for m in master_nodes]
     master_names = [m["name"] for m in master_nodes]
 
-    # Infer node group from name
-    node_name_lower = node["name"].lower()
-    if "master" in node_name_lower:
+    node_name = node.get("name", "unknown")
+    node_ip = node.get("ip", "127.0.0.1")
+    node_rack = node.get("rack", "r1")
+
+    # Infer group
+    lower = node_name.lower()
+    if "master" in lower:
         node_group = "master"
-    elif "data" in node_name_lower:
+    elif "data" in lower:
         node_group = "data"
-    elif "ingest" in node_name_lower:
+    elif "ingest" in lower:
         node_group = "ingest"
     else:
         node_group = "coordinator"
 
-    # Should this node get HTTP SSL?
-    http_enabled_for_node = enable_http and node_group in (http_groups or [])
+    # HTTP enable flag
+    http_enabled = enable_http and node_group in (http_groups or [])
 
-    # Prepare Jinja context
+    # Template context
     context = {
         "cluster_name": cluster_name,
-        "node": node,
+        "node": {"name": node_name, "ip": node_ip, "rack": node_rack},
         "master_ips": master_ips,
         "master_names": master_names,
+        "enable_security": enable_security,
         "enable_ssl": enable_ssl,
-        "enable_http": http_enabled_for_node,
+        "enable_http": http_enabled,
+        "enable_logging": enable_logging,
+        "memory_lock": memory_lock,
     }
 
-    # Render the template
-    content = template.render(**context)
+    # Render YAML
+    rendered = template.render(**context)
 
-    # Output directory (outside project)
-    output_dir = get_runtime_dir() / "generated_configs"
+    # Output path
+    output_dir = get_runtime_dir() / "generated_configs" / node_name
     output_dir.mkdir(parents=True, exist_ok=True)
+    out_file = output_dir / "elasticsearch.yml"
+    out_file.write_text(rendered, encoding="utf-8")
 
-    out_file = output_dir / f"elasticsearch.yml"
-    out_file.write_text(content, encoding="utf-8")
-
-    print(f"✅ Rendered config for {node['name']} ({node_group}) at: {out_file}")
+    print(f"✅ Config rendered for {node_name} ({node_group}) -> {out_file}")
     return str(out_file)

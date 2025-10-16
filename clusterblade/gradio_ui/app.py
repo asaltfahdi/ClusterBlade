@@ -5,6 +5,7 @@ from clusterblade.gradio_ui.components.deploy_tab import render_deploy_tab
 from clusterblade.gradio_ui.components.ssl_tab import render_ssl_tab
 from clusterblade.gradio_ui.components.monitor_tab import render_monitor_tab
 from clusterblade.gradio_ui.components.readme_tab import render_readme_tab 
+from clusterblade.gradio_ui.components.enable_https_tab import render_enable_https_tab
 from clusterblade.core.paths import get_runtime_dir
 from pathlib import Path
 
@@ -41,6 +42,9 @@ def main(port: int = 7860):
 
         with gr.Tab("🔐 SSL Certificates"):
             render_ssl_tab(shared_state)
+
+        with gr.Tab("Enable HTTPS"): 
+            render_enable_https_tab(shared_state)
 
         with gr.Tab("📊 Monitor Cluster"):
             render_monitor_tab(shared_state)
