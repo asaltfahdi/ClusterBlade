@@ -22,7 +22,7 @@ def cleanup_old_certs(cert_dir: Path):
         print(f"📁 Created new certificate directory: {cert_dir}")
 
 
-def generate_ca(cert_dir: Path):
+def generate_ca(cert_dir: Path,cert_validity:int=3650):
     """Generate a new CA certificate and private key."""
     print("🔧 Generating new Root CA...")
 
@@ -40,7 +40,7 @@ def generate_ca(cert_dir: Path):
         .public_key(key.public_key())
         .serial_number(x509.random_serial_number())
         .not_valid_before(datetime.utcnow())
-        .not_valid_after(datetime.utcnow() + timedelta(days=3650))
+        .not_valid_after(datetime.utcnow() + timedelta(days=cert_validity))
         .add_extension(x509.BasicConstraints(ca=True, path_length=None), critical=True)
         .sign(key, hashes.SHA256())
     )
@@ -63,7 +63,7 @@ def generate_ca(cert_dir: Path):
     return ca_cert_path, ca_key_path
 
 
-def generate_node_cert(cert_dir: Path, node_name: str, node_ip: str, ca_cert_path: Path, ca_key_path: Path, password: bytes | None = None):
+def generate_node_cert(cert_dir: Path, node_name: str, node_ip: str,dns: str, ca_cert_path: Path, ca_key_path: Path, password: bytes | None = None,cert_validity:int=3650):
     """Generate per-node PEM cert and key signed by CA."""
     key_path = cert_dir / f"{node_name}.key"
     cert_path = cert_dir / f"{node_name}.crt"
@@ -81,7 +81,7 @@ def generate_node_cert(cert_dir: Path, node_name: str, node_ip: str, ca_cert_pat
     ])
 
     alt_names = [
-        x509.DNSName(node_name),
+        x509.DNSName(dns),
         x509.IPAddress(ipaddress.ip_address(node_ip))
     ]
 
@@ -92,7 +92,7 @@ def generate_node_cert(cert_dir: Path, node_name: str, node_ip: str, ca_cert_pat
         .public_key(key.public_key())
         .serial_number(x509.random_serial_number())
         .not_valid_before(datetime.utcnow())
-        .not_valid_after(datetime.utcnow() + timedelta(days=825))
+        .not_valid_after(datetime.utcnow() + timedelta(days=cert_validity))
         .add_extension(x509.SubjectAlternativeName(alt_names), critical=False)
         .sign(ca_key, hashes.SHA256())
     )
@@ -113,7 +113,7 @@ def generate_node_cert(cert_dir: Path, node_name: str, node_ip: str, ca_cert_pat
     return cert_path, key_path
 
 
-def generate_all_from_yaml(yaml_path: Path, cert_dir: Path, password: bytes | None = None):
+def generate_all_from_yaml(yaml_path: Path, cert_dir: Path, password: bytes | None = None, cert_validity:int=3650):
     """Regenerate all certs fresh based on instances.yaml."""
     print("📖 Reading instances from YAML file...")
     with open(yaml_path, "r", encoding="utf-8") as f:
@@ -128,21 +128,22 @@ def generate_all_from_yaml(yaml_path: Path, cert_dir: Path, password: bytes | No
     cleanup_old_certs(cert_dir)
 
     # Create new CA
-    ca_cert, ca_key = generate_ca(cert_dir)
+    ca_cert, ca_key = generate_ca(cert_dir,cert_validity)
 
     # Generate new certs for all nodes
     for node in instances:
         name = node.get("name")
+        dns = node.get("dns")
         ip = node.get("ip")
         if not name or not ip:
             print(f"⚠️ Skipping node with incomplete data: {node}")
             continue
 
-        generate_node_cert(cert_dir, name, ip, ca_cert, ca_key, password)
+        generate_node_cert(cert_dir, name, ip,dns, ca_cert, ca_key, password,cert_validity)
 
     print("\n🎉 All node certificates regenerated successfully!")
 
-def generate_http_certs(cert_dir: Path, ca_cert_path: Path, ca_key_path: Path):
+def generate_http_certs(cert_dir: Path, ca_cert_path: Path, ca_key_path: Path,cert_validity:int=3650):
     """
     Generate HTTPS (HTTP layer) certificates signed by existing CA.
 
@@ -177,7 +178,7 @@ def generate_http_certs(cert_dir: Path, ca_cert_path: Path, ca_key_path: Path):
         .public_key(http_key.public_key())
         .serial_number(x509.random_serial_number())
         .not_valid_before(datetime.utcnow())
-        .not_valid_after(datetime.utcnow() + timedelta(days=3650))
+        .not_valid_after(datetime.utcnow() + timedelta(days=cert_validity))
         .add_extension(
             x509.SubjectAlternativeName([
                 x509.DNSName(u"localhost"),

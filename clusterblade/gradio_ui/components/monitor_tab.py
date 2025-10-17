@@ -3,9 +3,18 @@ import requests
 import paramiko
 import socket
 from typing import Tuple
-
+import subprocess
 REQUEST_TIMEOUT = 3  # seconds
-
+open_health_js = """
+(_data) => {
+    const result = _data?.[0];
+    if (typeof result === 'string' && result.startsWith('http')) {
+        window.open(result, '_blank');
+        return '';
+    }
+    return result;
+}
+"""
 
 def render_monitor_tab(shared_state):
     """Cluster monitor tab."""
@@ -31,9 +40,25 @@ def render_monitor_tab(shared_state):
         url = f"{scheme}://{ip}:{port}"
         try:
             r = requests.get(url, auth=(user, pwd), timeout=REQUEST_TIMEOUT, verify=False)
-            return r.status_code == 200
+            return r.status_code == 200 or r.status_code == 401
         except Exception:
             return False
+        
+    def is_node_in_cluster(ip: str, es_user: str, es_pass: str, use_https: bool) -> bool:
+        """Return True if this node is listed in _cat/nodes output."""
+        port = int(f"92{ip_suffix_2(ip)}")
+        scheme = "https" if use_https else "http"
+        base_ip = ip  # this node's IP
+        url = f"{scheme}://{base_ip}:{port}/_cat/nodes?h=ip&format=json"
+        try:
+            r = requests.get(url, auth=(es_user, es_pass), timeout=REQUEST_TIMEOUT, verify=False)
+            if r.status_code == 200:
+                nodes = [n["ip"] for n in r.json()]
+                return base_ip in nodes
+            return False
+        except Exception:
+            return False
+    
 
     def ssh_exec(ip: str, user: str, pwd: str, cmd: str) -> Tuple[bool, str]:
         try:
@@ -56,7 +81,8 @@ def render_monitor_tab(shared_state):
         return border, dot
 
     # ---------- Actions ----------
-    def execute_action(ssh_user, ssh_pass, node_ip, action):
+
+    def execute_action(ssh_user, ssh_pass, node_ip, action, es_user, es_pass, use_https):
         if not node_ip or not action:
             return "⚠️ Missing IP or action!"
 
@@ -74,6 +100,7 @@ def render_monitor_tab(shared_state):
 
         cluster_name = get_cluster_name(node_ip)
 
+        # command-based actions
         cmd_map = {
             "Start Node": "sudo systemctl start elasticsearch",
             "Stop Node": "sudo systemctl stop elasticsearch",
@@ -82,13 +109,37 @@ def render_monitor_tab(shared_state):
             "Node logs": f"sudo tail -n 100 /var/log/elasticsearch/{cluster_name}.log",
         }
 
+        # non-command actions handled internally
+        if action == "Go To Cluster Health":
+            scheme = "https" if use_https else "http"
+            port = int(f"92{ip_suffix_2(node_ip)}")
+            url = f"{scheme}://{node_ip}:{port}/_cluster/health?pretty"
+            curl_cmd = [
+                "curl", "-s",
+                "-u", f"{es_user}:{es_pass}",
+                "--connect-timeout", "5",
+                url
+            ]
+            if use_https:
+                curl_cmd.append("-k")  # ignore cert validation for self-signed certs
+
+            try:
+                output = subprocess.check_output(curl_cmd, stderr=subprocess.STDOUT).decode()
+                return f"📊 Cluster Health on {node_ip} ({cluster_name}):\n{'-'*60}\n{output}"
+            except Exception as e:
+                return f"❌ Curl failed ({e}"
+            except Exception as e:
+                return f"❌ Unexpected error: {e}"
+
+
         cmd = cmd_map.get(action)
         if not cmd:
             return f"❌ Unknown action: {action}"
 
         ok, msg = ssh_exec(node_ip, ssh_user, ssh_pass, cmd)
         action_name = action.capitalize()
-        if action == "logs":
+
+        if action == "Node logs":
             node_name_cmd = "hostname"
             ok_name, vm_name = ssh_exec(node_ip, ssh_user, ssh_pass, node_name_cmd)
             vm_name = vm_name.strip() if ok_name and vm_name else node_ip
@@ -96,8 +147,15 @@ def render_monitor_tab(shared_state):
             prefix = f"📜 Last 100 lines from {cluster_name}.log on {vm_name} ({node_ip}):"
             content = msg if ok else f"❌ Error: {msg}"
             return f"{prefix}\n{'-'*60}\n{content}"
-        else:
-            return f"{'✅' if ok else '❌'} {action_name} on {node_ip}: {msg}"
+
+        return f"{'✅' if ok else '❌'} {action_name} on {node_ip}: {msg}"
+
+            
+    def open_cluster_health(es_user, es_pass, node_ip, use_https):
+        """Return a URL to open cluster health view for the given node."""
+        scheme = "https" if use_https else "http"
+        port = int(f"92{ip_suffix_2(node_ip)}")
+        return f"{scheme}://{es_user}:{es_pass}@{node_ip}:{port}/_cluster/health?pretty"
 
     def restart_all_nodes(ssh_user, ssh_pass):
         instances = shared_state.get("instances") or []
@@ -140,16 +198,15 @@ def render_monitor_tab(shared_state):
                 node_html = gr.HTML("")
                 node_ip_box = gr.Textbox(value="", visible=False)
                 action_choice = gr.Dropdown(
-                    ["Start Node", "Stop Node", "Restart Node", "Node logs" ,"Reboot VM"],
+                    ["Start Node", "Stop Node", "Restart Node", "Node logs" ,"Reboot VM", "Go To Cluster Health"],
                     label="Action",
                     interactive=True,
                 )
                 run_btn = gr.Button("🚀 Run")
-
                 run_btn.click(
                     fn=execute_action,
-                    inputs=[ssh_user, ssh_pass, node_ip_box, action_choice],
-                    outputs=[logs],
+                    inputs=[ssh_user, ssh_pass, node_ip_box, action_choice, es_user, es_pass, use_https],
+                    outputs=[logs]
                 )
 
             node_rows.append((row, node_html, node_ip_box))
@@ -166,8 +223,12 @@ def render_monitor_tab(shared_state):
                     name, ip = node.get("name", ""), node.get("ip", "")
                     vm_up = check_ssh_port(ip)
                     es_up = check_es_http(ip, es_user_v, es_pass_v, use_https_v) if vm_up else False
+                    in_cluster = is_node_in_cluster(ip, es_user_v, es_pass_v, use_https_v) if es_up else False
+                    
                     border, dot = status_colors(vm_up, es_up)
                     status_text = f"{'VM Online' if vm_up else 'VM Offline'} | {'ES Running' if es_up else 'ES Down'}"
+                    if es_up:
+                        status_text += f" | {'🟢 Joined Cluster' if in_cluster else '🟡 Not Joined'}"
                     dot_class = "pulse-dot online" if es_up else "pulse-dot offline"
                     html = f"""
                         <div style='border:2px solid {border};background:#181818;color:#e0e0e0;
